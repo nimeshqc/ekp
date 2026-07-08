@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_CORPUS_SUMMARY, query, sendFeedback } from '../../api/mock'
+import { fetchDefaultCorpus, query, sendFeedback, type DefaultCorpusDoc } from '../../api/client'
 import type { Citation, Corpus, QueryStage, QueryStats } from '../../api/types'
 import { StageFlow, type StageState } from '../../components/StageFlow'
-import { Badge, Card, SectionTitle, StatTile } from '../../components/ui'
+import { Badge, Card, ResponseHeading, SectionTitle, StatTile } from '../../components/ui'
 import { fmtCost, fmtMs, fmtNum, fmtScore } from '../../utils/format'
 
 const QUERY_STAGES: { key: QueryStage; label: string }[] = [
@@ -28,6 +28,7 @@ interface Exchange {
   stats: QueryStats | null
   queryId: string | null
   done: boolean
+  error: string | null
 }
 
 interface Props {
@@ -42,7 +43,14 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
   const [exchanges, setExchanges] = useState<Exchange[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [defaultDocs, setDefaultDocs] = useState<DefaultCorpusDoc[]>([])
   const endRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (corpus === 'default') {
+      fetchDefaultCorpus().then(setDefaultDocs).catch(() => {})
+    }
+  }, [corpus])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -75,6 +83,7 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
         stats: null,
         queryId: null,
         done: false,
+        error: null,
       },
     ])
 
@@ -107,6 +116,9 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
         case 'done':
           patch(id, (x) => ({ ...x, stats: e.stats, queryId: e.queryId, done: true }))
           break
+        case 'error':
+          patch(id, (x) => ({ ...x, error: e.message, done: true }))
+          break
       }
     })
 
@@ -115,7 +127,7 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
   }
 
   return (
-    <Card className="flex flex-1 flex-col p-5">
+    <Card className="flex flex-1 flex-col p-5 sm:p-6">
       <div className="flex items-center justify-between">
         <SectionTitle>Ask the knowledge base</SectionTitle>
         <Badge tone={outOfBudget ? 'red' : 'slate'}>
@@ -124,17 +136,17 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
       </div>
 
       {exchanges.length === 0 && (
-        <div className="mt-4">
+        <div className="mt-5">
           {corpus === 'default' ? (
             <>
               <div className="grid gap-2 sm:grid-cols-3">
-                {DEFAULT_CORPUS_SUMMARY.map((d) => (
+                {defaultDocs.map((d) => (
                   <a
                     key={d.docId}
                     href={`/viewer/${d.docId}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-slate-300 transition hover:border-slate-600"
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 transition hover:border-indigo-300 hover:bg-white"
                   >
                     <FileIcon kind={d.kind} />
                     <span className="ml-2">{d.filename}</span>
@@ -142,21 +154,26 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
                   </a>
                 ))}
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {STARTERS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => ask(s)}
-                    disabled={disabled}
-                    className="rounded-full border border-indigo-900 bg-indigo-950/50 px-3 py-1.5 text-xs text-indigo-300 transition hover:border-indigo-600 disabled:opacity-50"
-                  >
-                    {s}
-                  </button>
-                ))}
+              <div className="mt-5">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                  Try asking
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {STARTERS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => ask(s)}
+                      disabled={disabled}
+                      className="rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-700 transition hover:border-indigo-400 hover:bg-indigo-100 disabled:opacity-50"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           ) : noUserDocs ? (
-            <p className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-4 py-3 text-sm text-amber-300">
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
               Ingest at least one document above, then ask your first question here.
             </p>
           ) : (
@@ -167,15 +184,15 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
         </div>
       )}
 
-      <div className="mt-2 space-y-6">
+      <div className="mt-4 space-y-8">
         {exchanges.map((x) => (
-          <ExchangeView key={x.id} x={x} onFollowup={ask} followupsDisabled={disabled} />
+          <ExchangeView key={x.id} x={x} token={token} onFollowup={ask} followupsDisabled={disabled} />
         ))}
         <div ref={endRef} />
       </div>
 
       <form
-        className="mt-5 flex gap-2 border-t border-slate-800 pt-4"
+        className="mt-6 flex gap-2 border-t border-slate-200 pt-4"
         onSubmit={(e) => {
           e.preventDefault()
           ask(input)
@@ -187,12 +204,12 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
           disabled={disabled}
           placeholder={
             outOfBudget
-              ? 'Question budget for this link is used up'
+              ? 'Question limit for this demo link is used up'
               : noUserDocs
                 ? 'Upload documents first…'
                 : 'Ask a question about the documents…'
           }
-          className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none disabled:opacity-60"
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-60"
         />
         <button
           type="submit"
@@ -210,10 +227,12 @@ export default function QueryPanel({ token, corpus, userDocIds, remaining, onQue
 
 function ExchangeView({
   x,
+  token,
   onFollowup,
   followupsDisabled,
 }: {
   x: Exchange
+  token: string
   onFollowup: (q: string) => void
   followupsDisabled: boolean
 }) {
@@ -221,63 +240,95 @@ function ExchangeView({
     <div className="fade-up">
       {/* question echoes immediately (optimistic UI) */}
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-xl rounded-br-sm bg-indigo-600/90 px-3.5 py-2 text-sm text-white">
+        <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-2.5 text-sm text-white shadow-sm">
           {x.question}
         </div>
       </div>
 
-      <div className="mt-3">
-        <StageFlow stages={QUERY_STAGES} state={x.stages} />
-      </div>
-
-      {x.grounded === false && x.done && (
-        <div className="mt-3">
-          <Badge tone="amber">grounding guarantee — no answer without sources</Badge>
-        </div>
-      )}
-
-      {(x.answer || !x.done) && (
-        <div className="mt-3 max-w-[92%] text-sm leading-relaxed text-slate-200">
-          <AnswerText text={x.answer} citations={x.citations} streaming={!x.done} />
-        </div>
-      )}
-
-      {x.citations.length > 0 && (
-        <div className="mt-3 space-y-1.5">
-          {x.citations.map((c) => (
-            <CitationCard key={c.id} c={c} />
-          ))}
-        </div>
-      )}
-
-      {x.followups.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {x.followups.map((f) => (
-            <button
-              key={f}
-              onClick={() => onFollowup(f)}
-              disabled={followupsDisabled}
-              className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300 transition hover:border-indigo-600 hover:text-indigo-300 disabled:opacity-50"
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {x.done && x.stats && (
-        <div className="mt-3 space-y-2.5">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-            <StatTile label="Retrieval" value={fmtMs(x.stats.retrievalMs)} />
-            <StatTile label="First token" value={fmtMs(x.stats.ttftMs)} />
-            <StatTile label="Total" value={fmtMs(x.stats.totalMs)} />
-            <StatTile label="Tokens in" value={fmtNum(x.stats.inputTokens)} />
-            <StatTile label="Tokens out" value={fmtNum(x.stats.outputTokens)} />
-            <StatTile label="Est. cost" value={fmtCost(x.stats.estCostUsd)} sub={x.stats.model} />
+      {/* response — labeled, well-spaced sections inside one surface */}
+      <div className="mt-4 space-y-6 rounded-xl border border-slate-200 bg-slate-50/70 p-5">
+        <section>
+          <ResponseHeading>Processing pipeline</ResponseHeading>
+          <div className="mt-3">
+            <StageFlow stages={QUERY_STAGES} state={x.stages} />
           </div>
-          {x.queryId && <FeedbackRow queryId={x.queryId} />}
-        </div>
-      )}
+        </section>
+
+        {x.error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
+            <span className="font-semibold">Something went wrong.</span> {x.error}
+          </div>
+        )}
+
+        {x.grounded === false && x.done && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-700">
+            <span className="font-semibold">Grounding guarantee.</span> No answer is returned
+            without supporting sources — the platform declined to guess.
+          </div>
+        )}
+
+        {(x.answer || !x.done) && (
+          <section>
+            <ResponseHeading>Answer</ResponseHeading>
+            <div className="mt-2 text-[15px] leading-7 text-slate-700">
+              <AnswerText text={x.answer} citations={x.citations} token={token} streaming={!x.done} />
+            </div>
+          </section>
+        )}
+
+        {x.citations.length > 0 && (
+          <section>
+            <ResponseHeading>
+              Sources
+              <span className="rounded-full bg-slate-200 px-1.5 py-px font-mono text-[10px] text-slate-600">
+                {x.citations.length}
+              </span>
+            </ResponseHeading>
+            <div className="mt-2.5 space-y-2">
+              {x.citations.map((c) => (
+                <CitationCard key={c.id} c={c} token={token} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {x.followups.length > 0 && (
+          <section>
+            <ResponseHeading>Suggested follow-ups</ResponseHeading>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {x.followups.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => onFollowup(f)}
+                  disabled={followupsDisabled}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-600 transition hover:border-indigo-400 hover:text-indigo-700 disabled:opacity-50"
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {x.done && x.stats && (
+          <section>
+            <ResponseHeading>Query metrics</ResponseHeading>
+            <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              <StatTile label="Retrieval" value={fmtMs(x.stats.retrievalMs)} />
+              <StatTile label="First token" value={fmtMs(x.stats.ttftMs)} />
+              <StatTile label="Total" value={fmtMs(x.stats.totalMs)} />
+              <StatTile label="Tokens in" value={fmtNum(x.stats.inputTokens)} />
+              <StatTile label="Tokens out" value={fmtNum(x.stats.outputTokens)} />
+              <StatTile label="Est. cost" value={fmtCost(x.stats.estCostUsd)} sub={x.stats.model} />
+            </div>
+            {x.queryId && (
+              <div className="mt-3">
+                <FeedbackRow queryId={x.queryId} token={token} />
+              </div>
+            )}
+          </section>
+        )}
+      </div>
     </div>
   )
 }
@@ -286,10 +337,12 @@ function ExchangeView({
 function AnswerText({
   text,
   citations,
+  token,
   streaming,
 }: {
   text: string
   citations: Citation[]
+  token: string
   streaming: boolean
 }) {
   const parts = text.split(/(\[\d+\])/g)
@@ -298,57 +351,59 @@ function AnswerText({
       {parts.map((part, i) => {
         const m = part.match(/^\[(\d+)\]$/)
         const c = m ? citations.find((c) => c.id === Number(m[1])) : undefined
-        return c ? <CitationChip key={i} c={c} /> : <span key={i}>{part}</span>
+        return c ? <CitationChip key={i} c={c} token={token} /> : <span key={i}>{part}</span>
       })}
       {streaming && (
-        <span className="ml-0.5 inline-block h-4 w-2 animate-pulse rounded-sm bg-indigo-400 align-text-bottom" />
+        <span className="ml-0.5 inline-block h-4 w-2 animate-pulse rounded-sm bg-indigo-500 align-text-bottom" />
       )}
     </p>
   )
 }
 
-function viewerUrl(c: Citation): string {
+function viewerUrl(c: Citation, token: string): string {
   const params = new URLSearchParams({ start: String(c.charStart), end: String(c.charEnd) })
   if (c.page) params.set('page', String(c.page))
+  // user-corpus documents require the link token to be viewable (isolation)
+  if (token) params.set('t', token)
   return `/viewer/${c.docId}?${params}`
 }
 
-function CitationChip({ c }: { c: Citation }) {
+function CitationChip({ c, token }: { c: Citation; token: string }) {
   return (
     <a
-      href={viewerUrl(c)}
+      href={viewerUrl(c, token)}
       target="_blank"
       rel="noreferrer"
       title={`${c.filename} — open source with passage highlighted`}
-      className="mx-0.5 inline-flex size-4.5 -translate-y-0.5 items-center justify-center rounded bg-indigo-950 align-middle font-mono text-[10px] font-semibold text-indigo-300 ring-1 ring-indigo-800 transition hover:bg-indigo-800 hover:text-white"
+      className="mx-0.5 inline-flex size-4.5 -translate-y-0.5 items-center justify-center rounded bg-indigo-100 align-middle font-mono text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200 transition hover:bg-indigo-600 hover:text-white"
     >
       {c.id}
     </a>
   )
 }
 
-function CitationCard({ c }: { c: Citation }) {
+function CitationCard({ c, token }: { c: Citation; token: string }) {
   return (
     <a
-      href={viewerUrl(c)}
+      href={viewerUrl(c, token)}
       target="_blank"
       rel="noreferrer"
-      className="group flex items-start gap-2.5 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 transition hover:border-indigo-700"
+      className="group flex items-start gap-2.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 transition hover:border-indigo-300 hover:shadow-sm"
     >
-      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-indigo-950 font-mono text-[10px] font-semibold text-indigo-300 ring-1 ring-indigo-800">
+      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-indigo-100 font-mono text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-200">
         {c.id}
       </span>
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-x-2 text-xs">
-          <span className="font-medium text-slate-200 group-hover:text-indigo-300">{c.filename}</span>
-          {c.page && <span className="text-slate-500">page {c.page}</span>}
-          <span className="font-mono text-slate-500">sim {fmtScore(c.score)}</span>
-          <span className="text-slate-600">chars {c.charStart}–{c.charEnd}</span>
-          <span className="text-indigo-400 opacity-0 transition group-hover:opacity-100">
+          <span className="font-medium text-slate-800 group-hover:text-indigo-700">{c.filename}</span>
+          {c.page && <span className="text-slate-400">page {c.page}</span>}
+          <span className="font-mono text-slate-400">sim {fmtScore(c.score)}</span>
+          <span className="text-slate-400">chars {c.charStart}–{c.charEnd}</span>
+          <span className="text-indigo-600 opacity-0 transition group-hover:opacity-100">
             open highlighted ↗
           </span>
         </span>
-        <span className="mt-0.5 line-clamp-2 block text-xs italic leading-relaxed text-slate-400">
+        <span className="mt-1 line-clamp-2 block text-xs italic leading-relaxed text-slate-500">
           “{c.snippet}”
         </span>
       </span>
@@ -356,19 +411,19 @@ function CitationCard({ c }: { c: Citation }) {
   )
 }
 
-function FeedbackRow({ queryId }: { queryId: string }) {
+function FeedbackRow({ queryId, token }: { queryId: string; token: string }) {
   const [verdict, setVerdict] = useState<'like' | 'dislike' | null>(null)
   const [reason, setReason] = useState('')
   const [sent, setSent] = useState(false)
 
   async function like() {
     setVerdict('like')
-    await sendFeedback(queryId, 'like')
+    await sendFeedback(token, queryId, 'like')
     setSent(true)
   }
 
   async function submitDislike() {
-    await sendFeedback(queryId, 'dislike', reason || undefined)
+    await sendFeedback(token, queryId, 'dislike', reason || undefined)
     setSent(true)
   }
 
@@ -385,16 +440,16 @@ function FeedbackRow({ queryId }: { queryId: string }) {
       <span className="text-xs text-slate-500">Was this answer helpful?</span>
       <button
         onClick={like}
-        className="rounded-md border border-slate-700 px-2.5 py-1 text-xs text-slate-300 transition hover:border-emerald-700 hover:text-emerald-400"
+        className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-600 transition hover:border-emerald-400 hover:text-emerald-600"
       >
         👍 Yes
       </button>
       <button
         onClick={() => setVerdict('dislike')}
-        className={`rounded-md border px-2.5 py-1 text-xs transition ${
+        className={`rounded-md border bg-white px-2.5 py-1 text-xs transition ${
           verdict === 'dislike'
-            ? 'border-red-800 text-red-400'
-            : 'border-slate-700 text-slate-300 hover:border-red-800 hover:text-red-400'
+            ? 'border-red-300 text-red-600'
+            : 'border-slate-300 text-slate-600 hover:border-red-400 hover:text-red-600'
         }`}
       >
         👎 No
@@ -407,11 +462,11 @@ function FeedbackRow({ queryId }: { queryId: string }) {
             onChange={(e) => setReason(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submitDislike()}
             placeholder="What was wrong? (optional)"
-            className="min-w-40 flex-1 rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+            className="min-w-40 flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
           />
           <button
             onClick={submitDislike}
-            className="rounded-md bg-slate-800 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-700"
+            className="rounded-md bg-slate-100 px-2.5 py-1 text-xs text-slate-700 hover:bg-slate-200"
           >
             Send
           </button>
@@ -424,7 +479,7 @@ function FeedbackRow({ queryId }: { queryId: string }) {
 function FileIcon({ kind }: { kind: string }) {
   const label = kind === 'pdf' ? 'PDF' : kind === 'markdown' ? 'MD' : 'TXT'
   return (
-    <span className="inline-flex rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-400">
+    <span className="inline-flex rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-slate-500">
       {label}
     </span>
   )
