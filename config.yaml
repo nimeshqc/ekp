@@ -1,0 +1,41 @@
+# Enterprise Knowledge Platform — system-wide, versioned config (architecture.md §9.1).
+# Non-secret tunables only; every credential lives in environment variables (.env).
+
+embedding:
+  model: BAAI/bge-small-en-v1.5
+  backend: onnx-int8        # onnx-int8 | torch
+  device: cpu
+  threads: 2                # pin to the 2 vCPUs
+  batch_size: 32
+  max_seq_length: 512
+  warm: startup             # startup | on_link_open | lazy   (architecture.md §5)
+  idle_unload_seconds: 0    # 0 = never unload; e.g. 900 for on_link_open
+
+llm:
+  provider: gemini
+  model: gemini-2.0-flash
+  temperature: 0.2
+  max_output_tokens: 1024
+  stream: true
+
+chunking:
+  splitter: recursive       # recursive | markdown | sentence
+  chunk_size: 800
+  chunk_overlap: 120
+
+retrieval:
+  index: hnsw
+  top_k: 5
+  # grounding guarantee — calibrated for bge-small cosine scores: relevant
+  # passages measure ≥0.7, unrelated questions ≤0.45 on the demo corpora
+  score_threshold: 0.55
+
+follow_ups:
+  enabled: true
+  count: 3
+
+limits:                     # defaults; admin can override per link
+  default_max_ingestions: 5
+  default_max_queries: 25
+  max_file_mb: 25
+  max_files: 5
