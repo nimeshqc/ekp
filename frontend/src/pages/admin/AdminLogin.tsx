@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { adminLogin, isAdminAuthed } from '../../api/mock'
+import { adminLogin, isAdminAuthed } from '../../api/client'
 import { Card, Spinner } from '../../components/ui'
 import { Logo } from '../Home'
 
@@ -33,7 +33,7 @@ export default function AdminLogin() {
         <div className="flex items-center gap-3">
           <Logo className="size-8" />
           <div>
-            <h1 className="font-semibold text-slate-100">Admin portal</h1>
+            <h1 className="font-semibold text-slate-900">Admin portal</h1>
             <p className="text-xs text-slate-500">Enterprise Knowledge Platform</p>
           </div>
         </div>
@@ -43,7 +43,7 @@ export default function AdminLogin() {
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Username"
             autoComplete="username"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
           <input
             type="password"
@@ -51,9 +51,10 @@ export default function AdminLogin() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             autoComplete="current-password"
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          {/* credentials come from ADMIN_USERNAME / ADMIN_PASSWORD env vars */}
           <button
             type="submit"
             disabled={busy || !username || !password}
@@ -62,9 +63,6 @@ export default function AdminLogin() {
             {busy && <Spinner className="size-4 text-white" />}
             Sign in
           </button>
-          <p className="text-center text-[11px] text-slate-600">
-            Mockup: any username &amp; password signs in.
-          </p>
         </form>
       </Card>
     </div>

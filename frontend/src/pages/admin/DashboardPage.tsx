@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminDashboard } from '../../api/mock'
+import { adminDashboard } from '../../api/client'
 import type { DashboardData } from '../../api/types'
 import { Badge, Card, Spinner, StatTile } from '../../components/ui'
 import { fmtCost, fmtMs, fmtNum, timeAgo } from '../../utils/format'
@@ -13,7 +13,7 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center gap-3 py-16 text-slate-400">
+      <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
         <Spinner /> Loading dashboard…
       </div>
     )
@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-lg font-semibold text-slate-100">Usage dashboard</h1>
+      <h1 className="text-lg font-semibold text-slate-900">Usage dashboard</h1>
       <p className="mt-0.5 text-sm text-slate-500">
         Every ingestion and query across all proposal links.
       </p>
@@ -34,14 +34,14 @@ export default function DashboardPage() {
         <StatTile label="Queries" value={fmtNum(totals.queries)} />
         <StatTile label="Tokens" value={fmtNum(totals.tokens)} />
         <StatTile label="LLM cost" value={fmtCost(totals.estCostUsd)} sub="embeddings: $0 (in-house)" />
-        <StatTile label="Likes" value={<span className="text-emerald-400">{totals.likes}</span>} />
-        <StatTile label="Dislikes" value={<span className="text-red-400">{totals.dislikes}</span>} />
+        <StatTile label="Likes" value={<span className="text-emerald-600">{totals.likes}</span>} />
+        <StatTile label="Dislikes" value={<span className="text-red-600">{totals.dislikes}</span>} />
       </div>
 
       <Card className="mt-6 overflow-x-auto">
         <table className="w-full min-w-175 text-left text-sm">
           <thead>
-            <tr className="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-500">
+            <tr className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-400">
               <th className="px-4 py-3 font-medium">When</th>
               <th className="px-4 py-3 font-medium">Link</th>
               <th className="px-4 py-3 font-medium">Event</th>
@@ -54,31 +54,31 @@ export default function DashboardPage() {
           </thead>
           <tbody>
             {events.map((e) => (
-              <tr key={e.id} className="border-b border-slate-800/60 last:border-0 hover:bg-slate-900/40">
-                <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-slate-400">
+              <tr key={e.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <td className="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-slate-500">
                   {timeAgo(e.ts)}
                 </td>
-                <td className="max-w-44 truncate px-4 py-2.5 text-xs text-slate-300" title={e.linkLabel}>
+                <td className="max-w-44 truncate px-4 py-2.5 text-xs text-slate-600" title={e.linkLabel}>
                   {e.linkLabel}
                 </td>
                 <td className="px-4 py-2.5">
                   <Badge tone={e.kind === 'query' ? 'sky' : 'indigo'}>{e.kind}</Badge>
                 </td>
-                <td className="max-w-72 truncate px-4 py-2.5 text-xs text-slate-200" title={e.detail}>
+                <td className="max-w-72 truncate px-4 py-2.5 text-xs text-slate-700" title={e.detail}>
                   {e.detail}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-300">
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-600">
                   {fmtMs(e.latencyMs)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-300">
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-600">
                   {fmtNum(e.tokens)}
                 </td>
-                <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-300">
+                <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-600">
                   {fmtCost(e.estCostUsd)}
                 </td>
                 <td className="px-4 py-2.5 text-center text-sm">
                   {e.feedback === 'like' ? '👍' : e.feedback === 'dislike' ? '👎' : (
-                    <span className="text-slate-700">—</span>
+                    <span className="text-slate-300">—</span>
                   )}
                 </td>
               </tr>

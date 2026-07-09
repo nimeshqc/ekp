@@ -1,0 +1,11 @@
+Atlas Industries — Data Security Policy
+
+Encryption. All data is encrypted at rest using AES-256 and in transit using TLS 1.3. Encryption keys are rotated every 90 days and managed through a hardware security module.
+
+Access control. Access to production data follows the principle of least privilege. Standing access is prohibited; engineers request time-boxed elevated access which is logged and reviewed. Access reviews are performed quarterly.
+
+Retention. Customer documents are retained for the duration of the contract plus 30 days, after which they are permanently deleted from primary storage and backups.
+
+Incident response. Security incidents are triaged within one hour of detection. Customers affected by a confirmed data breach are notified within 72 hours, in line with regulatory requirements. A post-incident review is published internally within two weeks of resolution.
+
+Vendor management. Third-party vendors with access to customer data undergo an annual security assessment. Vendors must maintain SOC 2 Type II certification or an equivalent attestation.

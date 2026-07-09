@@ -1,0 +1,51 @@
+# Three services on the single VM (architecture.md §11): nginx, api, postgres.
+# Secrets come from .env (git-ignored); tunables from config.yaml (mounted).
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ekp
+      POSTGRES_DB: ekp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"   # local-only, for `make dev` / psql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ekp -d ekp"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    shm_size: 128mb
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file: .env
+    environment:
+      EKP_CONFIG: /srv/config.yaml
+    volumes:
+      - ./config.yaml:/srv/config.yaml:ro
+      - model_cache:/root/.cache        # keep the ONNX model across restarts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 2g                       # §10 resource budget
+    restart: unless-stopped
+
+  nginx:
+    build: ./frontend                   # multi-stage: vite build → nginx image
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  model_cache:

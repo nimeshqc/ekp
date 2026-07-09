@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
-import { getSourceDoc } from '../../api/mock'
+import { getSourceDoc } from '../../api/client'
 import type { SourceDoc } from '../../api/types'
 import { Badge, Spinner } from '../../components/ui'
 
@@ -15,6 +15,7 @@ export default function SourceViewer() {
   const [params] = useSearchParams()
   const start = Number(params.get('start') ?? -1)
   const end = Number(params.get('end') ?? -1)
+  const token = params.get('t') ?? undefined // required for user-corpus docs
   const hasHighlight = start >= 0 && end > start
 
   const [doc, setDoc] = useState<SourceDoc | null>(null)
@@ -22,8 +23,8 @@ export default function SourceViewer() {
   const markRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    getSourceDoc(docId).then(setDoc).catch(() => setMissing(true))
-  }, [docId])
+    getSourceDoc(docId, token).then(setDoc).catch(() => setMissing(true))
+  }, [docId, token])
 
   useEffect(() => {
     if (doc && markRef.current) {
@@ -33,15 +34,15 @@ export default function SourceViewer() {
 
   if (missing) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-slate-400">
-        Document not found (mock store was cleared — re-ingest and try again).
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+        Document not found — the link may have expired or the document belongs to another workspace.
       </div>
     )
   }
 
   if (!doc) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-3 text-slate-400">
+      <div className="flex min-h-screen items-center justify-center gap-3 text-slate-500">
         <Spinner /> Opening source…
       </div>
     )
@@ -55,13 +56,13 @@ export default function SourceViewer() {
     return { ...p, globalStart: pStart }
   })
 
-  const kindLabel = doc.kind === 'pdf' ? 'PDF · rendered via PDF.js in the live build' : doc.kind
+  const kindLabel = doc.kind === 'pdf' ? 'PDF · extracted text view' : doc.kind
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-5 py-3 backdrop-blur">
+    <div className="min-h-screen bg-slate-100">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 px-5 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
-          <span className="font-medium text-slate-100">{doc.filename}</span>
+          <span className="font-medium text-slate-900">{doc.filename}</span>
           <Badge tone="slate">{kindLabel}</Badge>
           {hasHighlight && <Badge tone="indigo">cited passage highlighted · chars {start}–{end}</Badge>}
         </div>
@@ -89,7 +90,7 @@ export default function SourceViewer() {
           )
 
           return doc.kind === 'pdf' ? (
-            <div key={p.page} className="rounded-md bg-slate-100 p-8 text-slate-900 shadow-xl">
+            <div key={p.page} className="rounded-md border border-slate-200 bg-white p-8 text-slate-900 shadow-md">
               <div className="whitespace-pre-wrap font-serif text-[15px] leading-relaxed">{body}</div>
               <div className="mt-6 text-center font-mono text-[10px] text-slate-400">
                 — page {p.page} of {doc.pages.length} —
@@ -98,7 +99,7 @@ export default function SourceViewer() {
           ) : (
             <div
               key={p.page}
-              className={`whitespace-pre-wrap rounded-md border border-slate-800 bg-slate-900 p-6 text-sm leading-relaxed text-slate-200 ${
+              className={`whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-6 text-sm leading-relaxed text-slate-700 shadow-sm ${
                 doc.kind === 'text' ? 'font-mono text-[13px]' : ''
               }`}
             >
@@ -107,7 +108,7 @@ export default function SourceViewer() {
           )
         })}
 
-        <p className="pb-6 text-center text-[11px] text-slate-600">
+        <p className="pb-6 text-center text-[11px] text-slate-400">
           Highlight anchored to character offsets stored per chunk at ingestion time — no re-search
           at click time.
         </p>
