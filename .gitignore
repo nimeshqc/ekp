@@ -221,3 +221,7 @@ __marimo__/
 node_modules/
 frontend/dist/
 *.local
+
+# EKP generated artifacts
+nginx/certs/
+backend/default_corpus/atlas-employee-handbook.pdf

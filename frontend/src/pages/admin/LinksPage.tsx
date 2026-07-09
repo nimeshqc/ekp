@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { adminCreateLink, adminListLinks, adminRevokeLink } from '../../api/mock'
+import { adminCreateLink, adminListLinks, adminRevokeLink } from '../../api/client'
 import type { ProposalLink } from '../../api/types'
 import { Badge, Card, CopyButton, SectionTitle, Spinner } from '../../components/ui'
 import { expiryText, timeAgo } from '../../utils/format'
@@ -24,7 +24,7 @@ export default function LinksPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100">Proposal links</h1>
+          <h1 className="text-lg font-semibold text-slate-900">Proposal links</h1>
           <p className="mt-0.5 text-sm text-slate-500">
             One link per bid — signed, expiring, usage-capped, revocable.
           </p>
@@ -49,7 +49,7 @@ export default function LinksPage() {
       )}
 
       {!links ? (
-        <div className="flex items-center justify-center gap-3 py-16 text-slate-400">
+        <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
           <Spinner /> Loading links…
         </div>
       ) : (
@@ -86,11 +86,11 @@ function LinkRow({
       : { tone: 'green' as const, label: expiry.text }
 
   return (
-    <Card className={`p-4 ${highlight ? 'fade-up border-indigo-700' : ''}`}>
+    <Card className={`p-4 ${highlight ? 'fade-up border-indigo-300 ring-1 ring-indigo-100' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-slate-100">{link.label}</span>
+            <span className="font-medium text-slate-900">{link.label}</span>
             <Badge tone={status.tone}>{status.label}</Badge>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -98,7 +98,7 @@ function LinkRow({
               href={link.url}
               target="_blank"
               rel="noreferrer"
-              className="truncate font-mono text-xs text-indigo-400 hover:underline"
+              className="truncate font-mono text-xs text-indigo-600 hover:underline"
             >
               {fullUrl}
             </a>
@@ -110,13 +110,13 @@ function LinkRow({
           <UsageCell label="uploads" used={link.usedIngestions} max={link.maxIngestions} />
           <UsageCell label="queries" used={link.usedQueries} max={link.maxQueries} />
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500">created</div>
-            <div className="font-mono text-xs text-slate-300">{timeAgo(link.createdAt)}</div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">created</div>
+            <div className="font-mono text-xs text-slate-600">{timeAgo(link.createdAt)}</div>
           </div>
           {!link.revoked && (
             <button
               onClick={onRevoke}
-              className="rounded-md border border-red-950 px-2.5 py-1.5 text-xs font-medium text-red-400 transition hover:border-red-700 hover:bg-red-950/40"
+              className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 transition hover:border-red-400 hover:bg-red-50"
             >
               Revoke
             </button>
@@ -131,9 +131,9 @@ function UsageCell({ label, used, max }: { label: string; used: number; max: num
   const full = used >= max
   return (
     <div className="text-right">
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className={`font-mono text-xs ${full ? 'text-amber-400' : 'text-slate-300'}`}>
-        {used}<span className="text-slate-600"> / {max}</span>
+      <div className="text-[10px] uppercase tracking-wider text-slate-400">{label}</div>
+      <div className={`font-mono text-xs ${full ? 'text-amber-600' : 'text-slate-600'}`}>
+        {used}<span className="text-slate-400"> / {max}</span>
       </div>
     </div>
   )
@@ -166,17 +166,17 @@ function CreateLinkForm({
   }
 
   return (
-    <Card className="fade-up mt-5 border-indigo-900/60 p-5">
+    <Card className="fade-up mt-5 border-indigo-200 p-5">
       <SectionTitle>New proposal link</SectionTitle>
       <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="lg:col-span-2">
-          <span className="text-xs text-slate-400">Label (client / bid)</span>
+          <span className="text-xs text-slate-500">Label (client / bid)</span>
           <input
             autoFocus
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="e.g. Initech — support KB chatbot"
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-600 focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
           />
         </label>
         <NumberField label="Max uploads" value={maxIngestions} onChange={setMaxIngestions} min={1} max={5} />
@@ -194,11 +194,11 @@ function CreateLinkForm({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-slate-200"
+            className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:text-slate-800"
           >
             Cancel
           </button>
-          <p className="ml-auto hidden text-[11px] text-slate-600 sm:block">
+          <p className="ml-auto hidden text-[11px] text-slate-400 sm:block">
             Caps are enforced server-side per request — the token alone is never trusted.
           </p>
         </div>
@@ -222,14 +222,14 @@ function NumberField({
 }) {
   return (
     <label>
-      <span className="text-xs text-slate-400">{label}</span>
+      <span className="text-xs text-slate-500">{label}</span>
       <input
         type="number"
         value={value}
         min={min}
         max={max}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-indigo-600 focus:outline-none"
+        className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
       />
     </label>
   )
