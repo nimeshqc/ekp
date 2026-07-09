@@ -21,6 +21,12 @@ make link LABEL="Acme Corp — RAG bid"   # mint a proposal link to share
 
 Open `https://<host>/admin` for the admin portal (credentials from `.env`).
 
+### Stopping the production stack
+
+```bash
+make down                   # stop nginx, api, postgres (containers kept, not removed)
+```
+
 ## Development
 
 ```bash
@@ -33,6 +39,15 @@ make dev-link LABEL="Local test"
 
 Vite serves on `http://localhost:5173` and proxies `/api` to the local API on
 port 8000.
+
+### Stopping the dev stack
+
+`make dev` runs uvicorn and Vite in the foreground — press `Ctrl+C` to stop
+both. Then stop the dev postgres container:
+
+```bash
+make dev-down                # stop the postgres container used by `make dev`
+```
 
 ## Configuration
 
