@@ -26,7 +26,7 @@ export default function LinksPage() {
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Proposal links</h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            One link per bid — signed, expiring, usage-capped, revocable.
+            One link per bid — unguessable, expiring, usage-capped, revocable.
           </p>
         </div>
         <button
@@ -189,7 +189,7 @@ function CreateLinkForm({
             className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
           >
             {busy && <Spinner className="size-4 text-white" />}
-            Generate signed URL
+            Generate link URL
           </button>
           <button
             type="button"
