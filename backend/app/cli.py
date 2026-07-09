@@ -25,8 +25,6 @@ async def cmd_migrate() -> None:
 
 async def cmd_link(label: str, ingestions: int, queries: int, hours: int, base: str) -> None:
     settings = load_settings()
-    if not settings.secrets.jwt_secret:
-        raise SystemExit("JWT_SECRET is not set")
     async with await psycopg.AsyncConnection.connect(
         settings.secrets.database_url, autocommit=True, row_factory=dict_row
     ) as conn:
@@ -34,7 +32,7 @@ async def cmd_link(label: str, ingestions: int, queries: int, hours: int, base: 
             conn, label=label, max_ingestions=ingestions,
             max_queries=queries, expires_in_hours=hours,
         )
-    public = link_public(row, settings.secrets.jwt_secret)
+    public = link_public(row)
     print(f"label:   {public['label']}")
     print(f"expires: {public['expiresAt']}")
     print(f"caps:    {ingestions} ingestions / {queries} queries")

@@ -44,8 +44,7 @@ async def list_links(request: Request):
     st = request.app.state
     async with st.pool.connection() as conn:
         rows = await link_svc.list_links(conn)
-    secret = st.settings.secrets.jwt_secret
-    return [link_svc.link_public(r, secret) for r in rows]
+    return [link_svc.link_public(r) for r in rows]
 
 
 @router.post("/api/admin/links", dependencies=[Depends(require_admin)])
@@ -59,7 +58,7 @@ async def create_link(body: CreateLinkBody, request: Request):
             max_queries=body.maxQueries,
             expires_in_hours=body.expiresInHours,
         )
-    return link_svc.link_public(row, st.settings.secrets.jwt_secret)
+    return link_svc.link_public(row)
 
 
 @router.post("/api/admin/links/{link_id}/revoke", dependencies=[Depends(require_admin)])
@@ -91,7 +90,8 @@ async def dashboard(request: Request):
                        coalesce((SELECT sum(c.token_count) FROM chunk c
                                  WHERE c.document_id = d.id), 0)::int  AS tokens,
                        0::numeric            AS est_cost,
-                       NULL::text            AS feedback
+                       NULL::text            AS feedback,
+                       NULL::text            AS feedback_reason
                 FROM document d
                 LEFT JOIN proposal_link pl ON pl.id = d.link_id
                 WHERE d.corpus = 'user'
@@ -102,9 +102,13 @@ async def dashboard(request: Request):
                        q.total_ms,
                        q.input_tokens + q.output_tokens,
                        q.est_cost,
-                       (SELECT f.verdict FROM feedback f
-                        WHERE f.query_log_id = q.id ORDER BY f.ts DESC LIMIT 1)
+                       fb.verdict,
+                       fb.reason
                 FROM query_log q
+                LEFT JOIN LATERAL (
+                    SELECT f.verdict, f.reason FROM feedback f
+                    WHERE f.query_log_id = q.id ORDER BY f.ts DESC LIMIT 1
+                ) fb ON true
                 LEFT JOIN proposal_link pl ON pl.id = q.link_id
             ) events
             ORDER BY ts DESC
@@ -153,6 +157,7 @@ async def dashboard(request: Request):
                 "tokens": e["tokens"],
                 "estCostUsd": float(e["est_cost"]),
                 "feedback": e["feedback"],
+                "feedbackReason": e["feedback_reason"],
             }
             for e in events
         ],
