@@ -65,7 +65,7 @@ $(VENV):
 	$(PIP) install -q -e backend
 
 dev: $(VENV)                    ## hot-reload API + Vite dev server + compose postgres
-	$(COMPOSE) up -d postgres
+	$(COMPOSE) up -d --wait postgres
 	@trap 'kill 0' EXIT INT TERM; \
 	( cd backend && DATABASE_URL=$(DEV_DATABASE_URL) \
 	  .venv/bin/uvicorn app.main:app --reload --port 8000 ) & \
