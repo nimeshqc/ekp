@@ -42,7 +42,7 @@ async def require_link(request: Request, *, allow_inactive: bool = False) -> dic
     try:
         async with st.pool.connection() as conn:
             return await load_link_for_token(
-                conn, token, st.settings.secrets.jwt_secret, allow_inactive=allow_inactive
+                conn, token, allow_inactive=allow_inactive
             )
     except LinkAuthError as e:
         raise HTTPException(_AUTH_STATUS.get(e.code, 401), str(e)) from e

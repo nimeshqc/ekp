@@ -1,14 +1,19 @@
-"""Proposal links: signed JWT tokens + DB-backed usage counters.
+"""Proposal links: opaque token slugs + DB-backed usage counters.
 
-architecture.md §8 — the JWT alone is never trusted for caps: every call
+architecture.md §8 — the token alone is never trusted for caps: every call
 re-checks the DB row (revoked / expiry / remaining budget), and budget
 consumption is a single atomic UPDATE so parallel requests can't overshoot.
+
+The prospect URL carries the link's `token_jti` as bare hex (uuid4().hex, 32
+chars) — short, unguessable, and stable for the life of the link. Auth is a
+direct DB lookup on that column; no signature to decode.
 """
 
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Literal
+import uuid
+from typing import Literal
 
 import jwt
 
@@ -48,31 +53,13 @@ def verify_admin_token(token: str, secret: str) -> None:
         raise LinkAuthError("invalid", "not an admin token")
 
 
-# ---------------------------------------------------------------- link JWT
+# ---------------------------------------------------------------- link token
 
 
-def mint_link_token(secret: str, link_id: str, jti: str, expires_at: dt.datetime) -> str:
-    payload = {
-        "typ": "link",
-        "lid": str(link_id),
-        "jti": str(jti),
-        "exp": int(expires_at.timestamp()),
-    }
-    # HS256 encoding is deterministic → re-minting from the stored row always
-    # yields the same URL for a given link.
-    return jwt.encode(payload, secret, algorithm=ALGO)
-
-
-def decode_link_token(token: str, secret: str, verify_exp: bool = True) -> dict[str, Any]:
-    try:
-        payload = jwt.decode(
-            token, secret, algorithms=[ALGO], options={"verify_exp": verify_exp}
-        )
-    except jwt.PyJWTError as e:
-        raise LinkAuthError("invalid", "invalid link token") from e
-    if payload.get("typ") != "link" or "lid" not in payload:
-        raise LinkAuthError("invalid", "not a link token")
-    return payload
+def link_token(link: dict) -> str:
+    """The link's opaque URL slug: its token_jti as bare hex (uuid4().hex)."""
+    jti = link["token_jti"]
+    return jti.hex if isinstance(jti, uuid.UUID) else uuid.UUID(str(jti)).hex
 
 
 # ---------------------------------------------------------------- DB access
@@ -98,20 +85,19 @@ async def create_link(
     return await cur.fetchone()
 
 
-async def get_link(conn, link_id: str) -> dict | None:
-    cur = await conn.execute("SELECT * FROM proposal_link WHERE id = %s", (link_id,))
-    return await cur.fetchone()
-
-
 async def load_link_for_token(
-    conn, token: str, secret: str, *, allow_inactive: bool = False
+    conn, token: str, *, allow_inactive: bool = False
 ) -> dict:
-    """Verify signature, then load + validate the DB row. With
-    allow_inactive=True (info endpoint) revoked/expired rows are returned so
-    the UI can show the right blocked screen."""
-    payload = decode_link_token(token, secret, verify_exp=not allow_inactive)
-    link = await get_link(conn, payload["lid"])
-    if link is None or str(link["token_jti"]) != payload.get("jti"):
+    """Look up the link by its opaque token slug, then validate the DB row.
+    With allow_inactive=True (info endpoint) revoked/expired rows are returned
+    so the UI can show the right blocked screen."""
+    try:
+        jti = uuid.UUID(hex=token)
+    except (ValueError, AttributeError, TypeError) as e:
+        raise LinkAuthError("invalid", "invalid link token") from e
+    cur = await conn.execute("SELECT * FROM proposal_link WHERE token_jti = %s", (jti,))
+    link = await cur.fetchone()
+    if link is None:
         raise LinkAuthError("invalid", "unknown link")
     if not allow_inactive:
         if link["revoked"]:
@@ -154,13 +140,12 @@ async def list_links(conn) -> list[dict]:
     return await cur.fetchall()
 
 
-def link_public(link: dict, secret: str) -> dict:
+def link_public(link: dict) -> dict:
     """Shape a proposal_link row for the admin UI (types.ts ProposalLink)."""
-    token = mint_link_token(secret, link["id"], link["token_jti"], link["expires_at"])
     return {
         "id": str(link["id"]),
         "label": link["label"],
-        "url": f"/p/{token}",
+        "url": f"/p/{link_token(link)}",
         "createdAt": link["created_at"].isoformat(),
         "expiresAt": link["expires_at"].isoformat(),
         "maxIngestions": link["max_ingestions"],

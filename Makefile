@@ -13,7 +13,7 @@ PY      := $(VENV)/bin/python
 DEV_DATABASE_URL ?= postgresql://ekp:$(POSTGRES_PASSWORD)@localhost:5432/ekp
 
 .PHONY: help dev up down logs ps migrate seed link reload certs \
-        dev-install dev-migrate dev-seed dev-link build-frontend
+        dev-install dev-migrate dev-seed dev-link dev-down build-frontend
 
 help:
 	@grep -E '^[a-z][a-zA-Z-]*:' Makefile | sed 's/:.*//' | sort | uniq
@@ -81,6 +81,9 @@ dev-seed: $(VENV)
 dev-link: $(VENV)               ## make dev-link LABEL="Acme — RAG bid"
 	cd backend && DATABASE_URL=$(DEV_DATABASE_URL) .venv/bin/python -m app.cli link \
 		"$(or $(LABEL),Local test link)" --hours $(or $(HOURS),72) --base http://localhost:5173
+
+dev-down:                       ## stop the dev postgres container (Ctrl+C stops uvicorn/vite)
+	$(COMPOSE) stop postgres
 
 build-frontend:
 	cd frontend && npm run build
