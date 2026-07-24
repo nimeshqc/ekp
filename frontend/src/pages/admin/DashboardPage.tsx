@@ -49,7 +49,7 @@ export default function DashboardPage() {
               <th className="px-4 py-3 text-right font-medium">Latency</th>
               <th className="px-4 py-3 text-right font-medium">Tokens</th>
               <th className="px-4 py-3 text-right font-medium">Cost</th>
-              <th className="px-4 py-3 text-center font-medium">Feedback</th>
+              <th className="px-4 py-3 font-medium">Feedback</th>
             </tr>
           </thead>
           <tbody>
@@ -76,8 +76,24 @@ export default function DashboardPage() {
                 <td className="px-4 py-2.5 text-right font-mono text-xs text-slate-600">
                   {fmtCost(e.estCostUsd)}
                 </td>
-                <td className="px-4 py-2.5 text-center text-sm">
-                  {e.feedback === 'like' ? '👍' : e.feedback === 'dislike' ? '👎' : (
+                <td className="max-w-64 px-4 py-2.5 text-sm">
+                  {e.feedback === 'like' ? (
+                    <span title="Helpful">👍</span>
+                  ) : e.feedback === 'dislike' ? (
+                    <span className="flex items-center gap-1.5">
+                      <span>👎</span>
+                      {e.feedbackReason ? (
+                        <span
+                          className="truncate text-xs text-red-600"
+                          title={e.feedbackReason}
+                        >
+                          {e.feedbackReason}
+                        </span>
+                      ) : (
+                        <span className="text-xs italic text-slate-400">no reason given</span>
+                      )}
+                    </span>
+                  ) : (
                     <span className="text-slate-300">—</span>
                   )}
                 </td>

@@ -155,6 +155,7 @@ export interface ActivityEvent {
   tokens: number
   estCostUsd: number
   feedback: Feedback | null
+  feedbackReason: string | null
 }
 
 export interface DashboardData {
