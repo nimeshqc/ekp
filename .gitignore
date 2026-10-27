@@ -225,3 +225,15 @@ frontend/dist/
 # EKP generated artifacts
 nginx/certs/
 backend/default_corpus/atlas-employee-handbook.pdf
+
+# Project Specific files
+.cursor/
+.vscode/
+
+# .claude is local except the agent skills and slash commands, which carry
+# the deploy runbook and must reach every clone. Git cannot re-include a path
+# inside an excluded directory, so exclude the contents and not the directory.
+.claude/*
+!.claude/skills/
+!.claude/commands/
+
