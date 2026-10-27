@@ -45,7 +45,15 @@ Question → consume query budget → embed (LRU-cached) → HNSW retrieve in th
 
 ![Ask the knowledge base: a cited answer with sources](docs/images/rag-query-example.png)
 
-## Quick start (production)
+## Deploying
+
+The live instance is `https://ekp.revasyst.com` on the Hostinger VPS.
+Deployment ships from a **separate repo** (`revasyst-projects/ekp-agent`),
+which carries the production compose and nginx config — a release has to be
+merged across. The runbook is [`docs/deploy.md`](docs/deploy.md); the agent
+checklist is [`.claude/skills/deploy-vps/SKILL.md`](.claude/skills/deploy-vps/SKILL.md).
+
+## Quick start (local)
 
 ```bash
 cp .env.example .env        # GEMINI_API_KEY, passwords, JWT_SECRET
